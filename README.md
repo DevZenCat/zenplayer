@@ -1,5 +1,7 @@
 # zenplayer
 
+This player for Qt framework with ffmpeg codec
+
 For use in your project add in your .pro file 
 
 ``` 
