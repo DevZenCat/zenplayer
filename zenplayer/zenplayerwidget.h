@@ -12,8 +12,10 @@ class ZenPlayerWidget : public QWidget
     public:
         explicit ZenPlayerWidget(QWidget *parent = nullptr);
 
-        void start(const QString& fileName);
+        void open(const QString& fileName);
+        void play();
         void stop();
+        void pause();
 
     protected:
         void paintEvent(QPaintEvent *event);

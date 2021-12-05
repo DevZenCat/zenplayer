@@ -20,8 +20,10 @@ class ZenPlayerQmlComponentVideo : public QQuickPaintedItem
         void setSource(const QString &source);
         QString source();
 
-        Q_INVOKABLE void start();
+        Q_INVOKABLE void open(const QString &fileName);
+        Q_INVOKABLE void play();
         Q_INVOKABLE void stop();
+        Q_INVOKABLE void pause();
 
     protected:
         void paint(QPainter *painter) override;

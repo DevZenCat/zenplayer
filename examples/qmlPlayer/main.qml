@@ -9,6 +9,8 @@ Window {
 
     visible: true
 
+    property bool paused: true;
+
     Video {
         id: video
         anchors.fill: parent
@@ -20,7 +22,17 @@ Window {
         }
     }
 
-    Component.onCompleted: {
-        video.start();
+    MouseArea {
+        anchors.fill: parent
+
+        onClicked: {
+            if (paused) {
+                paused = false;
+                video.play();
+            }else {
+                paused = true;
+                video.pause();
+            }
+        }
     }
 }

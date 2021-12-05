@@ -4,6 +4,8 @@
 #include "zenplayerpresenter.h"
 #include "zenplayerengine.h"
 
+#include <QDebug>
+
 ZenPlayerWidget::ZenPlayerWidget(QWidget *parent)
     : QWidget{parent}
 {
@@ -12,9 +14,20 @@ ZenPlayerWidget::ZenPlayerWidget(QWidget *parent)
     connect(_presenter.data(), &ZenPlayerPresenter::dataReady, this, &ZenPlayerWidget::update);
 }
 
-void ZenPlayerWidget::start(const QString& fileName)
+void ZenPlayerWidget::open(const QString& fileName)
 {
-    _engine->start(fileName);
+    _engine->open(fileName);
+}
+
+void ZenPlayerWidget::play()
+{
+    qDebug() << Q_FUNC_INFO;
+    _engine->play();
+}
+
+void ZenPlayerWidget::pause()
+{
+    _engine->pause();
 }
 
 void ZenPlayerWidget::stop()

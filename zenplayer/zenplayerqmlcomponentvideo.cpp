@@ -12,6 +12,7 @@ ZenPlayerQmlComponentVideo::ZenPlayerQmlComponentVideo(QQuickItem *parent)
 
     connect(_presenter.data(), &ZenPlayerPresenter::dataReady, this, &ZenPlayerQmlComponentVideo::update);
     connect(_engine.data(), &ZenPlayerEngine::error, this, &ZenPlayerQmlComponentVideo::error);
+    connect(this, &ZenPlayerQmlComponentVideo::sourceChanged, this, &ZenPlayerQmlComponentVideo::open);
 }
 
 ZenPlayerQmlComponentVideo::~ZenPlayerQmlComponentVideo()
@@ -19,13 +20,25 @@ ZenPlayerQmlComponentVideo::~ZenPlayerQmlComponentVideo()
     _engine->stop();
 }
 
-void ZenPlayerQmlComponentVideo::start()
+void ZenPlayerQmlComponentVideo::open(const QString &fileName)
 {
-    if (_source.isEmpty()) {
-        Q_EMIT error("Source is empty");
+    if (fileName.isEmpty()) {
+        Q_EMIT error("File name is empty");
         return;
     }
-    _engine->start(_source);
+
+    _source = fileName;
+    _engine->open(_source);
+}
+
+void ZenPlayerQmlComponentVideo::play()
+{
+    _engine->play();
+}
+
+void ZenPlayerQmlComponentVideo::pause()
+{
+    _engine->pause();
 }
 
 void ZenPlayerQmlComponentVideo::stop()

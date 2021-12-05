@@ -13,8 +13,7 @@ Widget::Widget(QWidget *parent)
 
 
     video = new ZenPlayerWidget(this);
-    video->start("./sample-mp4-file.mp4");
-
+    video->open("./sample-mp4-file.mp4");
     _layout->addWidget(video);
 }
 
@@ -27,4 +26,15 @@ void Widget::closeEvent(QCloseEvent *event)
 {
     video->stop();
     QWidget::closeEvent(event);
+}
+
+void Widget::mousePressEvent(QMouseEvent *event)
+{
+    if (pause) {
+        video->play();
+        pause = false;
+    }else {
+        video->pause();
+        pause = true;
+    }
 }

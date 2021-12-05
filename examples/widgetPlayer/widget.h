@@ -19,11 +19,13 @@ class Widget : public QWidget
         ~Widget();
 
         void closeEvent(QCloseEvent *event);
+        void mousePressEvent(QMouseEvent *event);
 
     private:
         Ui::Widget *ui;
 
         ZenPlayerWidget *video;
+        bool pause = true;
 
         QHBoxLayout *_layout;
 };

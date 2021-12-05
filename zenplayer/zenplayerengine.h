@@ -22,8 +22,12 @@ class ZenPlayerEngine : public QObject
     public:
         explicit ZenPlayerEngine(QObject *parent = nullptr);
 
-        void start(const QString &fileName);
+        bool open(const QString &fileName);
+        void play();
+        void pause();
         void stop();
+
+        void seek(uint64_t second);
 
     Q_SIGNALS:
         void error(const QString& error);
@@ -33,10 +37,13 @@ class ZenPlayerEngine : public QObject
         void engine();
         bool init();
 
+        void getFirstVideoFrame();
+
         void processError(const QString &errorString);
 
     private:
         bool _stopped;
+        bool _pause;
         QThread _thread;
         QString _fileName;
 
@@ -68,6 +75,13 @@ class ZenPlayerEngine : public QObject
         AVFrame *_audioFramePCM;
         uint8_t *_audioBufferTemp;
         int _audioBufferSize;
+
+        std::condition_variable _pauseCondition;
+        std::mutex _pauseMutex;
+        QElapsedTimer _elapsedTimer;
+
+        uint64_t _timeline;
+        uint64_t _pauseTimeLine;
 };
 
 #endif // ZENPLAYERENGINE_H
