@@ -34,6 +34,7 @@ bool ZenPlayerEngine::open(const QString &fileName)
     _fileName = fileName;
 
     if (!init()) {
+        processError("Can`t init codec");
         return false;
     }
 
@@ -49,7 +50,6 @@ bool ZenPlayerEngine::open(const QString &fileName)
 
 void ZenPlayerEngine::play()
 {
-    qDebug() << Q_FUNC_INFO;
     _elapsedTimer.start();
     _pause = false;
     _pauseCondition.notify_one();
@@ -86,7 +86,6 @@ void ZenPlayerEngine::seek(uint64_t second)
 
 void ZenPlayerEngine::engine()
 {
-    qDebug() << Q_FUNC_INFO;
     int size = _videoCodecContext->width * _videoCodecContext->height;
 
     AVPacket packet;
@@ -95,8 +94,6 @@ void ZenPlayerEngine::engine()
     {
         qWarning() << "New packet failed!";
     }
-
-    _audioOutputDevice = _audioOutput->start();
 
     av_freep(&_frame->data[0]);
     av_frame_unref(_frame);
@@ -189,39 +186,48 @@ bool ZenPlayerEngine::init()
     {
         if(_formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
         {
+            _videoCodecParameters = _formatContext->streams[i]->codecpar;
             _videoIndex = i;
         }
 
         if(_formatContext->streams[i]->codecpar->codec_type==AVMEDIA_TYPE_AUDIO)
         {
+            _audioCodecParameters = _formatContext->streams[i]->codecpar;
             _audioIndex = i;
         }
     }
 
+    if (!openVideoStream()) {
+        return false;
+    }
+
+    if (!openAudioStream()) {
+        processError("Can`t find audio stream");
+    }
+
+    return true;
+}
+
+bool ZenPlayerEngine::openVideoStream()
+{
     if(_videoIndex == -1)
     {
         processError("Could not find video stream");
         return false;
     }
 
-    _videoCodecContext = _formatContext->streams[_videoIndex]->codec;
-    _codec = avcodec_find_decoder(_videoCodecContext->codec_id);
+    _videoCodec = avcodec_find_decoder(_videoCodecParameters->codec_id);
 
-    if(!_codec)
+    if(!_videoCodec)
     {
-        processError("could not find codec");
+        processError("could not find video codec");
         return false;
     }
 
-    _audioCodecContext = _formatContext->streams[_audioIndex]->codec;
-    _audioCodec = avcodec_find_decoder(_audioCodecContext->codec_id);
+    _videoCodecContext = avcodec_alloc_context3(_videoCodec);
+    avcodec_parameters_to_context(_videoCodecContext, _videoCodecParameters);
 
-    if (avcodec_open2(_videoCodecContext, _codec, NULL) < 0) {
-        processError("Could not open codec.");
-        return false;
-    }
-
-    if (avcodec_open2(_audioCodecContext, _audioCodec, NULL) < 0) {
+    if (avcodec_open2(_videoCodecContext, _videoCodec, nullptr) < 0) {
         processError("Could not open video codec.");
         return false;
     }
@@ -229,13 +235,33 @@ bool ZenPlayerEngine::init()
     _frame     = av_frame_alloc();
     _frameRGB  = av_frame_alloc();
 
-    quint32 size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, _videoCodecContext->width, _videoCodecContext->height, 1);
+    quint32 size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, _videoCodecContext->width, _videoCodecContext->height, 24);
 
     _outBuffer = static_cast<uint8_t*>(av_malloc(size));
-    av_image_fill_arrays(_frameRGB->data, _frameRGB->linesize, _outBuffer, AV_PIX_FMT_RGB24,  _videoCodecContext->width, _videoCodecContext->height, 1);
+    av_image_fill_arrays(_frameRGB->data, _frameRGB->linesize, _outBuffer, AV_PIX_FMT_RGB24,  _videoCodecContext->width, _videoCodecContext->height, 24);
 
     _swsContext = sws_getContext(_videoCodecContext->width, _videoCodecContext->height, _videoCodecContext->pix_fmt,
                                  _videoCodecContext->width, _videoCodecContext->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+
+    return true;
+}
+
+bool ZenPlayerEngine::openAudioStream()
+{
+    _audioCodec = avcodec_find_decoder(_audioCodecContext->codec_id);
+    if(!_audioCodec)
+    {
+        processError("could not find audio codec");
+        return false;
+    }
+
+    _audioCodecContext = avcodec_alloc_context3(_audioCodec);
+    avcodec_parameters_to_context(_audioCodecContext, _audioCodecParameters);
+
+    if (avcodec_open2(_audioCodecContext, _audioCodec, nullptr) < 0) {
+        processError("Could not open audio codec.");
+        return false;
+    }
 
     uint64_t outChannelLayout = AV_CH_LAYOUT_MONO;
     int outNbSamples = 1024;
@@ -266,65 +292,17 @@ bool ZenPlayerEngine::init()
 
     QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
 
-
     _audioOutput = new QAudioOutput(format);
 
     _audioFrame = av_frame_alloc();
 
+    _audioOutputDevice = _audioOutput->start();
+
     return true;
-}
-
-void ZenPlayerEngine::getFirstVideoFrame()
-{
-    AVPacket packet;
-
-    int size = _videoCodecContext->width * _videoCodecContext->height;
-    if(av_new_packet(&packet, size) != 0)
-    {
-        qWarning() << "New packet failed!";
-    }
-
-//    av_freep(&_frame->data[0]);
-//    av_frame_unref(_frame);
-
-    while (true)
-    {
-        if(av_read_frame(_formatContext, &packet) >= 0)
-        {
-            if(packet.stream_index == _videoIndex)
-            {
-                int result = avcodec_send_packet(_videoCodecContext, & packet);
-                if (result != 0)
-                {
-                    av_packet_unref(&packet);
-                    continue;
-                }
-
-                result = avcodec_receive_frame(_videoCodecContext, _frame);
-                if (result != 0)
-                {
-                    av_packet_unref(&packet);
-                    continue;
-                }
-
-                sws_scale(_swsContext, static_cast<const uint8_t* const*>(_frame->data),
-                          _frame->linesize, 0, _videoCodecContext->height, _frameRGB->data,
-                          _frameRGB->linesize);
-
-                QImage *image = new QImage((uchar*)_outBuffer, _videoCodecContext->width, _videoCodecContext->height, _frameRGB->linesize[0], QImage::Format_RGB888);
-                image->save("C:/log/firstframe.png");
-                Q_EMIT frameComplete(image);
-                break;
-            }
-        }
-
-        av_packet_unref(&packet);
-    }
-
-    qDebug() << Q_FUNC_INFO << "complete";
 }
 
 void ZenPlayerEngine::processError(const QString &errorString)
 {
+    qWarning() << Q_FUNC_INFO << errorString;
     Q_EMIT error(errorString);
 }

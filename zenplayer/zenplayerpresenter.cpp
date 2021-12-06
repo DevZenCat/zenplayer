@@ -34,5 +34,8 @@ void ZenPlayerPresenter::paint(QPainter *painter, int width, int height)
         return;
     }
 
+
+    qDebug() << Q_FUNC_INFO << _currentFrame->width() << _currentFrame->height();
+
     painter->drawImage(QRect(0,0,width, height), *_currentFrame, QRect(0,0,_currentFrame->width(), _currentFrame->height()));
 }

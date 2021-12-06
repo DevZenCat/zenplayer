@@ -4,6 +4,10 @@
 #include <QObject>
 #include <QThread>
 #include <QAudioOutput>
+#include <QIODevice>
+#include <QMutex>
+
+//#include "libavcodec/avcodec.h"
 
 class AVFormatContext;
 class AVCodecContext;
@@ -11,9 +15,7 @@ class AVCodec;
 class AVFrame;
 class AVPacket;
 class SwrContext;
-
-#include <QIODevice>
-#include <QMutex>
+class AVCodecParameters;
 
 class ZenPlayerEngine : public QObject
 {
@@ -36,6 +38,8 @@ class ZenPlayerEngine : public QObject
     private:
         void engine();
         bool init();
+        bool openVideoStream();
+        bool openAudioStream();
 
         void getFirstVideoFrame();
 
@@ -49,10 +53,12 @@ class ZenPlayerEngine : public QObject
 
         AVFormatContext *_formatContext;
         AVCodecContext *_videoCodecContext;
-        AVCodec *_codec;
+        AVCodec *_videoCodec;
+        AVCodecParameters *_videoCodecParameters;
 
         AVCodecContext *_audioCodecContext;
         AVCodec *_audioCodec;
+        AVCodecParameters *_audioCodecParameters;
 
         AVFrame *_frame;
         AVFrame *_frameRGB;
